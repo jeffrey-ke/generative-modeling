@@ -1,4 +1,5 @@
 import argparse
+from itertools import product
 import torch
 from cleanfid import fid
 from matplotlib import pyplot as plt
@@ -40,7 +41,9 @@ def interpolate_latent_space(gen, path):
     # 3. Save out an image holding all 100 samples.
     # Use torchvision.utils.save_image to save out the visualization.
     ##################################################################
-    pass
+    iterp = torch.Tensor(list(product(torch.linspace(-1, 1, 10), torch.linspace(-1, 1, 10))))
+    samples = torch.concat((iterp, torch.zeros(100, 98)), dim=-1)
+    return samples
     ##################################################################
     #                          END OF YOUR CODE                      #
     ##################################################################
