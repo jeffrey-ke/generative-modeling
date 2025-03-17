@@ -105,8 +105,9 @@ def train_model(
                 # 2. Compute discriminator output on the train batch.
                 # 3. Compute the discriminator output on the generated data.
                 ##################################################################
-                discrim_real = None
-                discrim_fake = None
+                fake = gen(n_samples=len(train_batch))
+                discrim_real = disc(train_batch)
+                discrim_fake = disc(fake)
                 ##################################################################
                 #                          END OF YOUR CODE                      #
                 ##################################################################
@@ -136,8 +137,8 @@ def train_model(
                     # TODO 1.2: Compute generator and discriminator output on
                     # generated data.
                     ###################################################################
-                    fake_batch = None
-                    discrim_fake = None
+                    fake_batch = gen(len(train_batch))
+                    discrim_fake = disc(fake_batch)
                     ##################################################################
                     #                          END OF YOUR CODE                      #
                     ##################################################################
@@ -156,7 +157,9 @@ def train_model(
                         # TODO 1.2: Generate samples using the generator.
                         # Make sure they lie in the range [0, 1]!
                         ##################################################################
-                        generated_samples = None
+                        generated_samples = gen(50)
+                        # because the last activation is a Tanh, the ouput is -1,1, to we shift the range
+                        generated_samples = (generated_samples + 1) / 2
                         ##################################################################
                         #                          END OF YOUR CODE                      #
                         ##################################################################
