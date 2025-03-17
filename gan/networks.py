@@ -27,9 +27,8 @@ class UpSampleConv2D(torch.jit.ScriptModule):
         # (batch, channel, height*upscale_factor, width*upscale_factor)
         # 3. Apply convolution and return output
         ##################################################################
-        x = x.repeat([1,self.upscale_factor**2,1,1])
-        shuf = torch.nn.PixelShuffle(upscale_factor=self.upscale_factor)
-        after_shuf = shuf(x)
+        x = x.repeat([1,int(self.upscale_factor**2),1,1])
+        after_shuf = F.pixel_shuffle(x, upscale_factor=self.upscale_factor)
         after_conv = self.conv(after_shuf) # why the .repeat command doesn't screw us here:
         # PixelShuffle reverts the number of channels to x's original channel count was
         return after_conv
@@ -60,11 +59,10 @@ class DownSampleConv2D(torch.jit.ScriptModule):
         # 3. Take the average across dimension 0, apply convolution,
         # and return the output
         ##################################################################
-        downshuf = torch.nn.PixelUnshuffle(downscale_factor=self.downscale_ratio)
-        after_downshuf = downshuf(x)
+        after_downshuf = F.pixel_unshuffle(x, self.downscale_ratio)
         B,C_rr,H,W = after_downshuf.shape
-        C = C_rr // self.downscale_ratio**2
-        after_reshape = after_downshuf.view(B, self.downscale_ratio**2, C, H, W)
+        C = C_rr // int(self.downscale_ratio**2)
+        after_reshape = after_downshuf.view(B, int(self.downscale_ratio**2), C, H, W)
         after_permute = torch.permute(after_reshape, (1, 0, 2, 3, 4))
         after_mean = torch.mean(after_permute, dim=0)
         after_conv = self.conv(after_mean)
@@ -98,7 +96,7 @@ class ResBlockUp(torch.jit.ScriptModule):
         ##################################################################
         # TODO 1.1: Setup the network layers
         ##################################################################
-        self.upsample_residual = UpSampleConv2D(input_channels, n_filters, kernel_size)
+        self.upsample_residual = UpSampleConv2D(input_channels=input_channels, n_filters=n_filters, kernel_size=1)
         self.layers = torch.nn.Sequential(
                 torch.nn.BatchNorm2d(input_channels), # apparently I need to tell it how many channels there are
                 torch.nn.ReLU(),
@@ -332,7 +330,7 @@ class Generator(torch.jit.ScriptModule):
         # TODO 1.1: Generate n_samples latents and forward through the
         # network.
         ##################################################################
-        samples = torch.randn(n_samples, 128)
+        samples = torch.randn(n_samples, 128).cuda()
         after_forward_given_samples = self.forward_given_samples(samples)
         return after_forward_given_samples
         ##################################################################
