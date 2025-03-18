@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from jutils.logger import *
 
 
 class UpSampleConv2D(torch.jit.ScriptModule):
@@ -126,6 +127,7 @@ class ResBlockUp(torch.jit.ScriptModule):
         res = self.upsample_residual(x) # I NEED the conv2d for the res connection
                                                     # because after_layers had n_filters # of channels,
                                                     # whereas x has input_channels
+        #after_layers.register_hook(grad_hook(tag="ResBlockUp/after_layers"))
         return after_layers + res
         ##################################################################
         #                          END OF YOUR CODE                      #

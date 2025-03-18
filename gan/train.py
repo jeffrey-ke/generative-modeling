@@ -1,4 +1,5 @@
 from glob import glob
+from torch.utils.tensorboard import SummaryWriter
 import os
 import torch
 from tqdm import tqdm
@@ -7,6 +8,7 @@ from torchvision import transforms
 from torchvision.utils import save_image
 from PIL import Image
 from torchvision.datasets import VisionDataset
+from jutils.logger import *
 
 
 def build_transforms():
@@ -15,12 +17,16 @@ def build_transforms():
     rescaling = lambda x: (x - 0.5) * 2.0
     ds_transforms = transforms.Compose([transforms.ToTensor(), rescaling])
     return ds_transforms
-
+def lr_lambda(current_iter, max_iter):
+    if current_iter < max_iter:
+        return 1.0 - (current_iter / max_iter)
+    else:
+        return 0.0
 
 def get_optimizers_and_schedulers(gen, disc):
     # Get optimizers and learning rate schedulers.
-    optim_discriminator = torch.optim.Adam(disc.parameters(), lr=2e-4, betas=(0, 0.9))
-    optim_generator = torch.optim.Adam(gen.parameters(), lr=2e-4, betas=(0, 0.9))
+    optim_discriminator = torch.optim.Adam(disc.parameters(), lr=2e-4, betas=(0.5, 0.9))
+    optim_generator = torch.optim.Adam(gen.parameters(), lr=2e-4, betas=(0.5, 0.9))
     ##################################################################
     # TODO 1.2: Construct the learning rate schedulers for the
     # generator and discriminator. The learning rate for the
@@ -69,6 +75,7 @@ def train_model(
     log_period=10000,
     amp_enabled=True,
 ):
+    writer = SummaryWriter()
     torch.backends.cudnn.benchmark = True # speed up training
     ds_transforms = build_transforms()
     train_loader = torch.utils.data.DataLoader(
@@ -158,6 +165,7 @@ def train_model(
                         # Make sure they lie in the range [0, 1]!
                         ##################################################################
                         generated_samples = gen(50)
+                        # these are all nan...
                         # because the last activation is a Tanh, the ouput is -1,1, to we shift the range
                         generated_samples = (generated_samples + 1) / 2
                         ##################################################################
