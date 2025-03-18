@@ -1,4 +1,5 @@
 import argparse
+import torchvision
 from itertools import product
 import torch
 from cleanfid import fid
@@ -43,6 +44,8 @@ def interpolate_latent_space(gen, path):
     ##################################################################
     iterp = torch.Tensor(list(product(torch.linspace(-1, 1, 10), torch.linspace(-1, 1, 10))))
     samples = torch.concat((iterp, torch.zeros(100, 126)), dim=-1)
+    images = gen.forward_given_samples(samples)
+    torchvision.utils.save_image(images, path)
     return samples
     ##################################################################
     #                          END OF YOUR CODE                      #
