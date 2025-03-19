@@ -43,7 +43,7 @@ def interpolate_latent_space(gen, path):
     # Use torchvision.utils.save_image to save out the visualization.
     ##################################################################
     iterp = torch.Tensor(list(product(torch.linspace(-1, 1, 10), torch.linspace(-1, 1, 10))))
-    samples = torch.concat((iterp, torch.zeros(100, 126)), dim=-1)
+    samples = torch.concat((iterp, torch.zeros(100, 126)), dim=-1).cuda()
     images = gen.forward_given_samples(samples)
     torchvision.utils.save_image(images, path)
     return samples

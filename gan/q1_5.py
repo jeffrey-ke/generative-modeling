@@ -5,7 +5,8 @@ from utils import get_args
 
 from networks import Discriminator, Generator
 from train import train_model
-
+from jutils.utils import *
+import torch.nn.functional as F
 
 def compute_discriminator_loss(
     discrim_real, discrim_fake, discrim_interp, interp, lamb
@@ -20,7 +21,25 @@ def compute_discriminator_loss(
     # loss_pt2 = lambda * E[(|| grad wrt interpolated_data (D(interpolated_data))|| - 1)^2]
     # loss = loss_pt1 + loss_pt2
     ##################################################################
-    loss = None
+    """
+        loss_pt1 = torch.mean(discrim_fake) - torch.mean(discrim_real)
+    interp_gradient = torch.autograd.grad(
+        outputs=discrim_interp,
+        inputs=interp,
+        grad_outputs=torch.ones_like(discrim_interp),
+        create_graph=True,
+        retain_graph=True,
+    )[0]
+    interp_gradient = interp_gradient.view(interp_gradient.size(0), -1)
+    interp_gradient_norm = torch.norm(interp_gradient, dim=1, p=2)
+    loss_pt2 = lamb * torch.mean(interp_gradient_norm - 1) ** 2
+    loss = loss_pt1 + loss_pt2
+    """
+    eps = 1e-5
+    loss_1 = torch.mean(discrim_fake) - torch.mean(discrim_real) 
+    grad_wrt_interp = gradient(discrim_interp, interp)
+    loss_2 = lamb * torch.mean(torch.square(torch.linalg.norm(grad_wrt_interp) - 1))
+    loss = loss_1 + loss_2
     ##################################################################
     #                          END OF YOUR CODE                      #
     ##################################################################
@@ -32,7 +51,7 @@ def compute_generator_loss(discrim_fake):
     # TODO 1.5: Implement WGAN-GP loss for generator.
     # loss = - E[D(fake_data)]
     ##################################################################
-    loss = None
+    loss = -torch.mean(discrim_fake)
     ##################################################################
     #                          END OF YOUR CODE                      #
     ##################################################################
