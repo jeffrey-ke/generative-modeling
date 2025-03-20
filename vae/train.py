@@ -1,4 +1,5 @@
 import argparse
+from jutils.logger import *
 from collections import OrderedDict
 import numpy as np
 import torch
@@ -18,7 +19,12 @@ def ae_loss(model, x):
     ##################################################################
     # TODO 2.2: Fill in MSE loss between x and its reconstruction.
     ##################################################################
-    loss = None
+    encoder = model.encoder
+    decoder = model.decoder
+    z = encoder(x)
+    re = decoder(z)
+    loss = torch.mean(torch.square(x - re), dim=(0))
+    loss = torch.mean(loss)
     ##################################################################
     #                          END OF YOUR CODE                      #
     ##################################################################
@@ -38,9 +44,24 @@ def vae_loss(model, x, beta = 1):
     # closed form, you can find the formula here:
     # (https://stats.stackexchange.com/questions/318748/deriving-the-kl-divergence-loss-for-vaes).
     ##################################################################
-    total_loss = None
-    recon_loss = None
-    kl_loss = None
+    encoder = model.encoder
+    decoder = model.decoder
+    z_mean, z_log_std = encoder(x)
+    z_std = torch.exp(z_log_std)
+    epsilon = torch.randn_like(z_std).cuda()
+    z = z_mean + z_std * epsilon
+    re = decoder(z)
+    squared_diff = (re - x) ** 2
+    recon_loss = torch.sum(squared_diff, dim=(1, 2, 3))
+    recon_loss = torch.mean(recon_loss)
+    kl_loss = 0.5 * torch.sum(z_mean**2 + z_std**2 - (2 * z_log_std + 1), dim=1)
+    kl_loss = torch.mean(kl_loss)
+    total_loss = recon_loss + beta * kl_loss
+    # recon loss = -NLL
+    # objective = LL - KL
+    # loss = -LL + KL
+    # loss = recon_loss + KL
+    total_loss = recon_loss + beta * kl_loss
     ##################################################################
     #                          END OF YOUR CODE                      #
     ##################################################################
@@ -67,8 +88,8 @@ def linear_beta_scheduler(max_epochs=None, target_val = 1):
 def run_train_epoch(model, loss_mode, train_loader, optimizer, beta = 1, grad_clip = 1):
     model.train()
     all_metrics = []
-    for x, _ in train_loader:
-        x = preprocess_data(x)
+    for i, (x, _) in enumerate(train_loader):
+        x = x.cuda()
         if loss_mode == 'ae':
             loss, _metric = ae_loss(model, x)
         elif loss_mode == 'vae':
@@ -76,6 +97,8 @@ def run_train_epoch(model, loss_mode, train_loader, optimizer, beta = 1, grad_cl
         all_metrics.append(_metric)
         optimizer.zero_grad()
         loss.backward()
+        if i % 2 == 0:
+            log_gradients(model, get_step("vae"), logdir="runs/vae_xavier3_with_relu_in_enc")
 
         if grad_clip:
             torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
